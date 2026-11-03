@@ -45,6 +45,8 @@ services:
       timeout: 3s
       retries: 20
   gateway:
+    # Temurin 17 Alpine is published for amd64; Docker Desktop emulates it on ARM.
+    platform: linux/amd64
     build: ../bmatch-gateway
     environment:
       IS_PROD: "false"
