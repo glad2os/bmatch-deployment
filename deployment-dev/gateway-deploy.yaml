@@ -10,10 +10,6 @@ spec:
       port: 8002
       targetPort: 8002
       name: web
-    - protocol: TCP
-      port: 5005
-      targetPort: 5005
-      name: debugger
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -34,10 +30,9 @@ spec:
     spec:
       containers:
       - name: bmatch-gateway
-        image: glad2os/bmatch.gateway
+        image: glad2os/bmatch-gateway
         ports:
         - containerPort: 8002
-        - containerPort: 5005
         env:
         - name: IS_PROD
           value: "false"

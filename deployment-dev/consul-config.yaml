@@ -15,7 +15,7 @@ data:
     server = true
     bootstrap_expect = 1
     bind_addr = "0.0.0.0"
-    enable_script_checks = true
+    enable_script_checks = false
     advertise_addr = "127.0.0.1"
   redis.hcl: |
     service {
