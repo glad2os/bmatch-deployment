@@ -26,7 +26,7 @@ Init-скрипты выполняются только на пустом том
 локальные данные: `docker compose down -v`, затем `docker compose up --build`.
 **Команда с `-v` удаляет локальные данные PostgreSQL.**
 
-Smoke-тест (Node 18, из `bmatch-gameserver`, при запущенном стеке):
+Smoke-тест (Node 22+, из `bmatch-gameserver`, при запущенном стеке):
 
 ```sh
 npm install
@@ -36,9 +36,11 @@ node scripts/smoke.js
 Тест создаёт случайных dev-пользователей, собирает лобби с ботами и выполняет ход.
 Каждый шаг ограничен 15 секундами; ошибка возвращает код 1.
 
-Юнит-тесты gameserver: `npm test` на Node 18 (версия закреплена в `.nvmrc`; на Node 25+
-падает зависимость `jsonwebtoken`). Без локального Node 18 их можно запустить в образе
-стека: `docker compose run --rm --no-deps gameserver npm test`.
+Юнит-тесты gameserver: `npm test` (Node 22+, в образах и `.nvmrc` — Node 24). Без локального
+Node их можно запустить в образе стека: `docker compose run --rm --no-deps gameserver node --test`.
+
+Проверка уязвимостей: `trivy fs --scanners vuln,secret,misconfig ..` из `bmatch-deployment`
+и `trivy image` для собранных образов (`docker compose images`).
 
 Брошенная игра (ни одного хода человека за `GAME_IDLE_TIMEOUT_SECONDS`, по умолчанию 300)
 завершается на ближайшем тайм-ауте хода.
