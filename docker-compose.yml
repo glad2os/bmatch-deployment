@@ -93,7 +93,12 @@ services:
       timeout: 3s
       retries: 20
   frontend:
-    build: ../bmatch-frontend
+    build:
+      context: ../bmatch-frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8002}
+        VITE_WS_GAME_URL: ${VITE_WS_GAME_URL:-ws://localhost:8005}
+        VITE_WS_LOBBY_URL: ${VITE_WS_LOBBY_URL:-ws://localhost:8004}
     ports: ["127.0.0.1:5173:5173"]
     depends_on:
       gateway: {condition: service_healthy}
