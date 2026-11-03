@@ -1,0 +1,114 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: bmatch
+    ports: ["127.0.0.1:5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./compose/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d bmatch"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--maxmemory", "200mb", "--maxmemory-policy", "noeviction"]
+    ports: ["127.0.0.1:6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  rabbitmq:
+    build: ./rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER in .env}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+    ports: ["127.0.0.1:5672:5672", "127.0.0.1:15672:15672"]
+    healthcheck:
+      # "ping" succeeds before the AMQP listener accepts connections.
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  consul:
+    image: hashicorp/consul:1.22
+    user: consul
+    environment:
+      CONSUL_DISABLE_PERM_MGMT: "true"
+    command: ["agent", "-dev", "-client=0.0.0.0", "-config-dir=/consul/config"]
+    ports: ["127.0.0.1:8500:8500"]
+    volumes: ["./compose/consul:/consul/config:ro"]
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  gateway:
+    restart: unless-stopped
+    # Temurin 17 Alpine is published for amd64; Docker Desktop emulates it on ARM.
+    platform: linux/amd64
+    build: ../bmatch-gateway
+    environment:
+      IS_PROD: "false"
+      DB_HOST: postgres
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_SCHEME: bmatch
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      JWT_TOKEN: ${JWT_TOKEN:?Set JWT_TOKEN in .env}
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+    ports: ["127.0.0.1:8002:8002"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      consul: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8002/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+  gameserver:
+    restart: unless-stopped
+    build: ../bmatch-gameserver
+    environment:
+      CONSUL_HOST: consul
+      CONSUL_PORT: "8500"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: bmatch
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      JWT_TOKEN: ${JWT_TOKEN}
+    ports: ["127.0.0.1:8004:8004", "127.0.0.1:8005:8005"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+      consul: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8005/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  frontend:
+    restart: unless-stopped
+    build:
+      context: ../bmatch-frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8002}
+        VITE_WS_GAME_URL: ${VITE_WS_GAME_URL:-ws://localhost:8005}
+        VITE_WS_LOBBY_URL: ${VITE_WS_LOBBY_URL:-ws://localhost:8004}
+    ports: ["127.0.0.1:5173:5173"]
+    depends_on:
+      gateway: {condition: service_healthy}
+      gameserver: {condition: service_healthy}
+volumes:
+  pgdata:

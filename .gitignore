@@ -4,3 +4,6 @@ ssl
 gradlew
 gradlew.bat
 gradle
+
+.env
+deployment-dev/secrets.yaml
