@@ -36,6 +36,9 @@ services:
       retries: 30
   consul:
     image: hashicorp/consul:1.17
+    user: consul
+    environment:
+      CONSUL_DISABLE_PERM_MGMT: "true"
     command: ["agent", "-dev", "-client=0.0.0.0", "-config-dir=/consul/config"]
     ports: ["127.0.0.1:8500:8500"]
     volumes: ["./compose/consul:/consul/config:ro"]
