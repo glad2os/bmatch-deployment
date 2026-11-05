@@ -110,5 +110,16 @@ services:
     depends_on:
       gateway: {condition: service_healthy}
       gameserver: {condition: service_healthy}
+  # Manual tool, not started by "up": docker compose run --rm analytics <game_uuid> [--save | --apply]
+  analytics:
+    build: ../bmatch-analytics
+    profiles: ["tools"]
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: bmatch
+    depends_on:
+      postgres: {condition: service_healthy}
 volumes:
   pgdata:
