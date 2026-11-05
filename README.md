@@ -1,7 +1,8 @@
 # BubbleMatch: локальный запуск
 
-Требования: Docker Desktop с Docker Compose; четыре репозитория должны лежать рядом
-(`bmatch-deployment`, `bmatch-gameserver`, `bmatch-gateway`, `bmatch-frontend`).
+Требования: Docker Desktop с Docker Compose; репозитории должны лежать рядом
+(`bmatch-deployment`, `bmatch-gameserver`, `bmatch-gateway`, `bmatch-frontend`, а для ручной
+аналитики ещё `bmatch-analytics`).
 
 Из `bmatch-deployment`:
 
@@ -38,6 +39,11 @@ node scripts/smoke.js
 
 Юнит-тесты gameserver: `npm test` (Node 22+, в образах и `.nvmrc` — Node 24). Без локального
 Node их можно запустить в образе стека: `docker compose run --rm --no-deps gameserver node --test`.
+
+Аналитика партий (Memory, Accuracy, Speed, Streaks, Consistency и предложение по MMR) — отдельный
+сервис `../bmatch-analytics`, запускается вручную и в `up` не стартует:
+`docker compose run --rm analytics list`, затем `docker compose run --rm analytics <game_uuid>`
+(`--save` сохраняет результат, `--apply` ещё и меняет MMR). Подробности — в его README.
 
 Проверка уязвимостей: `trivy fs --scanners vuln,secret,misconfig ..` из `bmatch-deployment`
 и `trivy image` для собранных образов (`docker compose images`).
